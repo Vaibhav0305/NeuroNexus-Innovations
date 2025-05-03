@@ -1,0 +1,88 @@
+from google.colab import files
+uploaded = files.upload()
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+# Step 2: Load the dataset
+df = pd.read_csv('/content/dataset titanic.csv')
+
+# Step 3: Fill missing values in original DataFrame
+df["Age"] = df["Age"].fillna(df["Age"].median())
+df["Embarked"] = df["Embarked"].fillna(df["Embarked"].mode()[0])
+df["Fare"] = df["Fare"].fillna(df["Fare"].median())  # Just in case
+
+# Step 4: Convert categorical columns to numeric
+df["Sex"] = df["Sex"].map({"male": 0, "female": 1})
+df["Embarked"] = df["Embarked"].map({"S": 0, "C": 1, "Q": 2})
+
+# Step 5: Select features and target
+features = ["Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked"]
+target = "Survived"
+
+X = df[features]
+y = df[target]
+
+# Step 6: Confirm no NaNs
+print("🔍 Any NaNs left?\n", X.isnull().sum())
+
+# Step 7: Split data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 8: Train model
+model = LogisticRegression(max_iter=200)
+model.fit(X_train, y_train)
+
+# Step 9: Predict
+y_pred = model.predict(X_test)
+
+# Step 10: Evaluate
+print("✅ Accuracy:", accuracy_score(y_test, y_pred))
+print("\n🧮 Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+print("\n📋 Classification Report:\n", classification_report(y_test, y_pred))
+# Step 11: Predict for the entire dataset
+all_predictions = model.predict(X)
+
+# Step 12: Add predictions back to the DataFrame
+df["Predicted_Survival"] = all_predictions
+
+# Step 13: Count how many will sink and how many will survive
+survival_counts = df["Predicted_Survival"].value_counts()
+
+print("\n🚢 Survival Prediction Counts:")
+print("🟢 Survived (1):", survival_counts.get(1, 0))
+print("🔴 Did Not Survive (0):", survival_counts.get(0, 0))
+# Who will survive
+survivors = df[df["Predicted_Survival"] == 1]
+print("\n🟢 Sample Survivors:")
+print(survivors[["Name", "Sex", "Age", "Fare"]].head())
+
+# Who will not survive
+non_survivors = df[df["Predicted_Survival"] == 0]
+print("\n🔴 Sample Non-Survivors:")
+print(non_survivors[["Name", "Sex", "Age", "Fare"]].head())
+import matplotlib.pyplot as plt
+
+# Step 14: Plot survival predictions
+survival_counts = df["Predicted_Survival"].value_counts()
+
+plt.figure(figsize=(6, 4))
+bars = plt.bar(
+    survival_counts.index.map({0: "Did Not Survive", 1: "Survived"}),
+    survival_counts.values,
+    color=["red", "green"]
+)
+
+# Add value labels on bars
+for bar in bars:
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2.0, yval + 2, int(yval), ha='center', fontsize=12)
+
+plt.title("🛳 Titanic Survival Predictions")
+plt.ylabel("Number of Passengers")
+plt.xlabel("Prediction")
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.tight_layout()
+plt.show()
